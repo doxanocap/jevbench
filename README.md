@@ -11,6 +11,10 @@ JevBench is [Benchmark Heaven](https://benchmarkheaven.com)'s own benchmark. It 
 affiliated with or endorsed by TypeSafe AI, whose Jev model is one of the systems
 measured here.
 
+## Scoring method
+
+JevBench v1.5's frozen method and its disclosed release addenda are available in the [v1.5 method index](docs/METHOD-v1.5-README.md). It links the unchanged frozen method, every v1.5 addendum, and a SHA-256 manifest.
+
 ## v1.4.2.2: Imajev-4B leads; Plumb-4B is #2 (current)
 
 **[Live board](https://benchmarkheaven.com/jev-models)** · [v1.4.2.2 release notes](docs/RELEASE-v1.4.2.2.md) ·
