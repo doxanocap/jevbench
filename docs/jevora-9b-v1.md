@@ -23,22 +23,25 @@ all scores are the official runner/scorer's responsibility.
 
 ## Maintainer setup
 
-These commands are instructions, not a claimed benchmark run:
+From the JevBench checkout root, these commands are instructions, not a
+claimed benchmark run:
 
 ```sh
+JEVBENCH_DIR="$(pwd -P)"
+WORK_DIR="$(cd .. && pwd -P)"
 CODE_REPO=https://github.com/doxanocap/jevora-9b-v1
 CODE_REVISION=50027755772570d13bde8ec07503ec90ab893e01
-CODE_DIR=./jevora-public
+CODE_DIR="$WORK_DIR/jevora-public"
 git clone "$CODE_REPO" "$CODE_DIR"
 git -C "$CODE_DIR" checkout --detach "$CODE_REVISION"
-cd "$CODE_DIR" && uv sync --locked
+(cd "$CODE_DIR" && uv sync --locked)
 
 HF_REPO_ID=kadirbekovvv/jevora-9b-v1
 HF_REVISION=c644b9c7a3b67b7acc3279523e3bee69a4be473d
-MODEL_DIR="$PWD/models/jevora-9b-v1"
-uv run hf download "$HF_REPO_ID" --revision "$HF_REVISION" --local-dir "$MODEL_DIR"
+MODEL_DIR="$WORK_DIR/models/jevora-9b-v1"
+"$CODE_DIR/.venv/bin/hf" download "$HF_REPO_ID" --revision "$HF_REVISION" --local-dir "$MODEL_DIR"
 PACKAGE="$MODEL_DIR/jevora-9b-v1"
-uv run python -m jevora.model verify --package "$PACKAGE"
+make -C "$CODE_DIR" verify-package PACKAGE="$PACKAGE"
 ```
 
 `PACKAGE` is the nested `jevora-9b-v1/` directory, not the Hugging Face
@@ -46,16 +49,20 @@ repository root. Run the adapter with the public Jevora environment and the
 JevBench source checkout on `PYTHONPATH`:
 
 ```sh
-JEVBENCH_DIR=/path/to/jevbench
 TASKS=/path/to/maintainer-authorized-tasks.jsonl
 RUN_DIR=/path/out/jevora-9b-v1-smoke
 mkdir -p "$RUN_DIR"
-PYTHONPATH="$JEVBENCH_DIR:$CODE_DIR/src" "$CODE_DIR/.venv/bin/python" -m jevbench.cli run \
+JEVBENCH_WARM_LOAD=1 PYTHONPATH="$JEVBENCH_DIR:$CODE_DIR/src" \
+  "$CODE_DIR/.venv/bin/python" -m jevbench.cli run \
   --tasks "$TASKS" --adapter jevora_9b_v1 --endpoint "$PACKAGE" \
   --revision "$HF_REVISION" --device cuda --limit 1 \
+  --cost-basis self_hosted_cost_not_priced --reserve-usd 0 --cap-usd 0 \
   --results "$RUN_DIR/results.jsonl" --ledger "$RUN_DIR/ledger.jsonl" \
   --raw-dir "$RUN_DIR/raw" --manifest "$RUN_DIR/manifest.json"
 ```
+
+`JEVBENCH_WARM_LOAD=1` loads the package and model before JevBench starts the
+decision clock.
 
 For an official invocation, omit `--limit 1` and use the maintainer-pinned
 task bundle, runner, scorer and storage policy. This repository does not ship

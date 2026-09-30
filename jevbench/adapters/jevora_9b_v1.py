@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ JEVORA_PACKAGE_MANIFEST_SHA256 = "5fdc127bfee88aa2c722c12194a045f18599ff6eb44b17
 JEVORA_MAX_LENGTH = 1024
 JEVORA_MAX_OPTIONS = 255
 PROBABILITY_SUM_TOLERANCE = 1e-6
+OVERLENGTH_ERROR = re.compile(r"input has \d+ tokens, exceeds max_length=\d+")
 
 
 class InputLimitExceeded(ValueError):
@@ -113,7 +115,7 @@ def validate_probabilities(values: list[float], option_count: int) -> list[float
 
 
 def _is_overlength(error: Exception) -> bool:
-    return isinstance(error, ValueError) and str(error).startswith("input has ") and " exceeds max_length=" in str(error)
+    return isinstance(error, ValueError) and OVERLENGTH_ERROR.fullmatch(str(error)) is not None
 
 
 class Jevora9BV1Adapter:
@@ -146,6 +148,7 @@ class Jevora9BV1Adapter:
         manifest = package / "manifest.json"
         if not package.is_dir() or not manifest.is_file():
             raise FileNotFoundError(f"verified nested Jevora package is required: {package}")
+        # Only the manifest published at the pinned HF revision crosses this trust boundary.
         if _sha256(manifest) != JEVORA_PACKAGE_MANIFEST_SHA256:
             raise ValueError("release package manifest does not match the pinned Jevora HF revision")
         try:
@@ -203,7 +206,8 @@ class Jevora9BV1Adapter:
                                  "probability_origin": "native_jevora_decision_head_softmax",
                                  "temperature_source": "verified_package_calibration"}},
             )
-        except Exception as error:  # A model/runtime failure remains a normal failed attempt.
+        except Exception as error:
+            # JevBench treats documented input limits as 422, not infrastructure failures.
             over_limit = isinstance(error, InputLimitExceeded) or _is_overlength(error)
             return DecisionResult(
                 adapter=self.name,

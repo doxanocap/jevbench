@@ -59,6 +59,15 @@ def test_runtime_errors_have_no_synthetic_status(monkeypatch):
     assert not result.ok and result.status is None and "RuntimeError" in result.error
 
 
+def test_unrelated_value_errors_are_not_misclassified_as_overlength(monkeypatch):
+    def malformed_message(*_):
+        raise ValueError("input has invalid fields, exceeds max_length=1024")
+
+    adapter = adapter_with_mocked_inference(monkeypatch, malformed_message)
+    result = adapter.run(task("choice", {"a": "A", "b": "B"}, ["a", "b"]))
+    assert not result.ok and result.status is None
+
+
 def test_probability_validation_rejects_repairable_but_invalid_values():
     assert validate_probabilities([0.4, 0.6], 2) == [0.4, 0.6]
     for values in ([0.4], [0.4, 0.5], [float("nan"), 1.0], [0.4, 1.2]):
